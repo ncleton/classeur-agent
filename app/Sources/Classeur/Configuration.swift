@@ -382,11 +382,13 @@ struct EcranConfiguration: View {
             if prerequis.cle != .ok {
                 VStack(alignment: .leading, spacing: 7) {
                     Text("Obtenir votre clé").font(.system(size: 13, weight: .bold))
-                    Text("1. Ouvrez console.typesafe.ai et créez votre compte TypeSafe, ou connectez-vous.")
-                    Text("2. Dans la console, créez une nouvelle clé API, par exemple nommée « Classeur ».")
-                    Text("3. Copiez-la tout de suite : la console peut ne l'afficher qu'une fois.")
-                    Text("4. Cliquez sur « Enregistrer ma clé dans LibreAgent », collez-la et choisissez de la garder pour vous ou de la partager.")
+                    Text("1. Ouvrez la console TypeSafe : [console.typesafe.ai](https://console.typesafe.ai/login).")
+                    Text("2. Créez votre compte avec votre adresse e-mail ou avec Google, ou connectez-vous.")
+                    Text("3. Dans le menu de la console, ouvrez « API Keys » et créez une nouvelle clé, par exemple nommée « Classeur ».")
+                    Text("4. Copiez-la tout de suite : elle peut n'apparaître qu'une seule fois.")
+                    Text("5. Cliquez sur « Enregistrer ma clé dans LibreAgent », collez-la et choisissez de la garder pour vous ou de la partager.")
                 }
+                .tint(Color(hex: 0xA9D8FF))
                 .font(.system(size: 13))
                 .foregroundStyle(Theme.texte2)
                 .fixedSize(horizontal: false, vertical: true)
@@ -405,7 +407,7 @@ struct EcranConfiguration: View {
             } else if prerequis.cle != .ok {
                 message(prerequis.cle)
                 HStack(spacing: 12) {
-                    Button("Ouvrir console.typesafe.ai") { NSWorkspace.shared.open(URL(string: "https://console.typesafe.ai")!) }
+                    Button("Ouvrir la console TypeSafe") { NSWorkspace.shared.open(URL(string: "https://console.typesafe.ai/login")!) }
                         .buttonStyle(BoutonSecondaire()).fixedSize()
                     if let lien = prerequis.cleLien {
                         Button("Enregistrer ma clé dans LibreAgent") { NSWorkspace.shared.open(lien) }
