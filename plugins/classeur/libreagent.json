@@ -1,0 +1,20 @@
+{
+  "connectionRequirements": [
+    {
+      "key": "typesafe",
+      "label": "Jev par TypeSafe",
+      "authMode": "end-user",
+      "requiredActions": [
+        "Créer une clé API dans la console TypeSafe"
+      ],
+      "secrets": [
+        {
+          "name": "TYPESAFE_API_KEY",
+          "label": "Clé Jev",
+          "description": "Jev classe chaque mail dans le bon classeur. Classeur reçoit la clé à chaque classement, sans l'écrire sur le Mac.",
+          "setupUrl": "https://console.typesafe.ai"
+        }
+      ]
+    }
+  ]
+}

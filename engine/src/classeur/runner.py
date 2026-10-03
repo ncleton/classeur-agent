@@ -17,7 +17,10 @@ from .ontology import A_VERIFIER
 
 
 def emit(event: str, **data) -> None:
-    sys.stdout.write(json.dumps({"event": event, **data}, ensure_ascii=False) + "\n")
+    line = json.dumps({"event": event, **data}, ensure_ascii=False)
+    # Ces caractères sont valides en JSON mais certains lecteurs ligne à ligne les prennent pour des fins de ligne.
+    line = line.replace("\u2028", "\\u2028").replace("\u2029", "\\u2029").replace("\u0085", "\\u0085")
+    sys.stdout.write(line + "\n")
     sys.stdout.flush()
 
 
@@ -286,7 +289,7 @@ async def traiter(config: Config, *, ranger: bool, portee: str | None, limite: i
             emit("termine", run=run)
             return run
         owner = await _owner(config, mails)
-        emit("debut", total=len(mails), proprietaire=owner, deja=len(connus), ignores=len(supprimes),
+        emit("debut", total=len(mails), proprietaire=owner, repris=len(connus), ignores=len(supprimes),
              mails=[_public(m) for m in mails])
         for mail in nouveaux:
             mail["historique"] = await store.history(_address(mail["de"]), mail["id"])
@@ -433,6 +436,19 @@ def transferer(run_id: str, mail_id: str) -> dict:
     item["statut"] = "transfere"
     save_run(run)
     memoire.update({k: v for k, v in item.items()})
+    return item
+
+
+def ouvrir_reponse(run_id: str, mail_id: str) -> dict:
+    """Ouvre la réponse préparée dans la fenêtre de rédaction d'Apple Mail, pour la relire et l'envoyer depuis Mail."""
+    run = load_run(run_id)
+    item = _find(run, mail_id)
+    if item["action"] != "repondre" or not item.get("reponse", "").strip():
+        raise ValueError("Aucune réponse préparée pour ce mail.")
+    original = {"ref": {"date": item["date"], "from_addr": item["de"]}, "body_text": item.get("texte", "")}
+    candidates = [m for m in (item.get("dossier"), item["boite"]) if m]
+    mailapp.compose_reply(account=item["compte"], mailboxes=candidates, message_id=item["message_id"],
+                          body=item["reponse"], original=original)
     return item
 
 

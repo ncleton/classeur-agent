@@ -15,7 +15,8 @@ Classeur lit les mails d'Apple Mail, comprend ce que chacun demande, les range d
 
 - Aucune réponse, aucun transfert ni aucune suppression sans validation explicite de la personne.
 - Les mails restent sur le Mac : ne jamais copier leur contenu, des adresses ou des captures dans Git, la mémoire partagée de l'agent ou un service externe autre que le modèle qui les analyse.
-- Les clés (TypeSafe, OpenAI) appartiennent à chaque personne et restent dans son trousseau ; ne jamais en écrire une dans le dépôt.
+- La clé Jev (TypeSafe) se saisit dans LibreAgent pendant l'onboarding de l'agent (`plugins/classeur/libreagent.json`) ; la personne choisit de la garder pour elle ou de la partager avec les utilisateurs de l'agent. Classeur la reçoit par `libreagent-connect secrets exec` : ne jamais l'écrire sur le disque, dans le dépôt ni dans une conversation.
+- La personne ne passe jamais par le Terminal : les autorisations macOS se donnent dans l'écran de configuration de l'application.
 - Les captures de `docs/` contiennent de vrais mails : elles ne sortent jamais de ce dépôt privé. Le dépôt public se produit uniquement par `scripts/export-agent.sh`.
 - Toute erreur doit remonter avec sa cause et la correction à faire, sans mode dégradé.
 - Augmenter la version dans les deux manifestes du plugin à chaque publication.

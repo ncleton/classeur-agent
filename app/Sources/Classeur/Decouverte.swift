@@ -174,6 +174,7 @@ struct MiniCarte: View {
 /// Rend toute la tuile cliquable, avec la main au survol, pour ouvrir le mail dans Apple Mail.
 struct OuvreDansMail: ViewModifier {
     let id: String?
+    var aide: String? = nil
     let action: () -> Void
     @State private var survol = false
 
@@ -193,16 +194,18 @@ struct OuvreDansMail: ViewModifier {
                 if dedans { NSCursor.pointingHand.push() } else { NSCursor.pop() }
             }
             .onDisappear { if survol { NSCursor.pop(); survol = false } }
-            .help("Ouvrir dans Mail")
+            .help(aide ?? "Ouvrir dans \(AppModel.shared.messagerie.nom)")
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isButton)
-            .accessibilityHint("Ouvre ce mail dans Apple Mail")
+            .accessibilityHint(aide ?? "Ouvre ce mail dans \(AppModel.shared.messagerie.nom)")
             .accessibilityAction { action() }
     }
 }
 
 extension View {
-    func ouvreDansMail(id: String? = nil, _ action: @escaping () -> Void) -> some View { modifier(OuvreDansMail(id: id, action: action)) }
+    func ouvreDansMail(id: String? = nil, aide: String? = nil, _ action: @escaping () -> Void) -> some View {
+        modifier(OuvreDansMail(id: id, aide: aide, action: action))
+    }
 }
 
 /// Menu du clic droit d'un mail : ouvrir, déplacer vers un autre classeur, supprimer.
@@ -214,7 +217,13 @@ struct MenuMail: View {
     let model = AppModel.shared
 
     var body: some View {
-        Button("Ouvrir dans Mail") { model.ouvrirDansMail(messageId) }
+        Button("Ouvrir dans \(model.messagerie.nom)") { model.ouvrirDansMail(messageId) }
+        if phaseTraitement, let card = model.cards.first(where: { $0.id == id }), card.action == "repondre", !card.reponse.isEmpty {
+            Button("Répondre dans \(model.messagerie.nom) avec la réponse préparée") { model.repondreDansMail(card) }
+        }
+        if phaseTraitement, let card = model.cards.first(where: { $0.id == id }), card.action == "transferer", card.statut != "transfere", !card.transfertEmail.isEmpty {
+            Button("Transférer à \(card.transfertEmail)") { model.transfer(card) }
+        }
         Menu("Déplacer vers") {
             ForEach(model.colonnesAffichees.filter { $0.id != classeurActuel }) { c in
                 Button(c.nom) {

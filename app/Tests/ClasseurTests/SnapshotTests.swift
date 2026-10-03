@@ -93,13 +93,39 @@ final class SnapshotTests: XCTestCase {
         model.phase = .termine
         try snap("6-termine", out)
 
-        model.errorMessage = "Apple Mail refuse de créer ou de remplir les dossiers : ton compte est probablement déconnecté. Dans Mail, ouvre Fenêtre > Diagnostic de connexion. Si iCloud (ou un autre compte) est en rouge, reconnecte-le dans Réglages Système, puis relance le traitement."
-        model.errorCode = "compte_deconnecte"
+        model.errorMessage = "Apple Mail ne peut plus lire le mot de passe de ton compte : le trousseau « session » de macOS est verrouillé, donc Mail n'arrive pas à se connecter au serveur pour créer ou remplir les dossiers. Clique sur « Déverrouiller le trousseau », saisis le mot de passe de ta session Mac, puis relance le traitement."
+        model.errorCode = "trousseau_verrouille"
         model.phase = .erreur
         try snap("7-erreur-compte", out)
     }
 
-    private func snap(_ name: String, _ out: URL) throws {
+    /// CLASSEUR_SNAPSHOT_OUT=<dossier> swift test --filter testRenderConfiguration
+    func testRenderConfiguration() throws {
+        guard let outDir = ProcessInfo.processInfo.environment["CLASSEUR_SNAPSHOT_OUT"] else {
+            throw XCTSkip("CLASSEUR_SNAPSHOT_OUT est requis.")
+        }
+        let out = URL(fileURLWithPath: outDir)
+        try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
+        _ = NSApplication.shared
+        let prerequis = Prerequis.shared
+        AppModel.shared.phase = .configuration
+
+        prerequis.mails = .manquant("Classeur n'a pas encore accès à vos mails.")
+        prerequis.pilotage = .manquant("Autorisez Classeur à ranger vos mails dans Mail.")
+        prerequis.codex = .ok
+        prerequis.cle = .manquant("Clés API manquantes pour l'agent « Classeur » : TYPESAFE_API_KEY (Clé Jev).")
+        try snap("8-configuration-mails", out, configuration: EcranConfiguration(verifier: false, etape: .mails))
+
+        prerequis.mails = .ok
+        prerequis.pilotage = .ok
+        prerequis.cleLien = URL(string: "https://libreagent.example/agents/1/keys")
+        try snap("9-configuration-cle", out, configuration: EcranConfiguration(verifier: false, etape: .cle))
+
+        prerequis.cle = .ok
+        try snap("10-configuration-prete", out, configuration: EcranConfiguration(verifier: false, etape: .cle))
+    }
+
+    private func snap(_ name: String, _ out: URL, configuration: EcranConfiguration? = nil) throws {
         let model = AppModel.shared
         let view = ZStack {
             Fond()
@@ -108,6 +134,7 @@ final class SnapshotTests: XCTestCase {
                 Group {
                     switch model.phase {
                     case .demarrage: Demarrage()
+                    case .configuration: configuration ?? EcranConfiguration(verifier: false)
                     case .accueil: Accueil()
                     case .decouverte: Decouverte()
                     case .connexion, .lecture, .compris: Lecture()
@@ -118,7 +145,6 @@ final class SnapshotTests: XCTestCase {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             if let c = model.reglage { ReglagesClasseur(classeur: c, nouveau: model.reglageNouveau) }
-            if let card = model.selected { FicheMail(card: card) }
         }
         .preferredColorScheme(.dark)
 

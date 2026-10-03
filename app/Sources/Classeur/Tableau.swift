@@ -87,10 +87,7 @@ struct Colonne: View {
                 LazyVStack(spacing: 8) {
                     ForEach(shown) { card in
                         Carte(card: card, classeur: classeur)
-                            .onTapGesture { model.open(card) }
-                            .onHover { dedans in
-                                if dedans { model.survol = card.id } else if model.survol == card.id { model.survol = nil }
-                            }
+                            .ouvreDansMail(id: card.id, aide: model.aideOuverture(card)) { model.ouvrirCarte(card) }
                             .contextMenu { MenuMail(id: card.id, classeurActuel: card.classeur, messageId: card.messageId, phaseTraitement: true) }
                             .draggable(card.id) {
                                 Carte(card: card, classeur: classeur).frame(width: 220)

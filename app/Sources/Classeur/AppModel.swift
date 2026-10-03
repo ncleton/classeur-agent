@@ -1,5 +1,6 @@
 import AppKit
 import Observation
+import Security
 import SwiftUI
 
 @MainActor
@@ -7,7 +8,7 @@ import SwiftUI
 final class AppModel {
     static let shared = AppModel()
 
-    enum Phase { case demarrage, accueil, decouverte, connexion, lecture, compris, rangement, termine, erreur }
+    enum Phase { case demarrage, configuration, accueil, decouverte, connexion, lecture, compris, rangement, termine, erreur }
     enum EtapeDecouverte { case lecture, imagination, classement, edition }
     enum Action { case decouverte, reclassement, traitement(Bool) }
 
@@ -47,17 +48,19 @@ final class AppModel {
     var runId: String?
     var errorMessage = ""
     var errorCode = ""
+    var errorURL: URL?
     var unread: Int?
     var totalBoite: Int?
     var dejaTraites = 0
     var repris = 0
     var survol: String?
     var unreadError: String?
-    var selected: MailCard?
     var toast: Toast?
     var sending = false
-    var sheetError: String?
     var lastRun: RunPayload?
+    var messagerie: Messagerie = Messagerie.enregistree {
+        didSet { UserDefaults.standard.set(messagerie.rawValue, forKey: Messagerie.cle) }
+    }
 
     @ObservationIgnored private var process: Process?
 
@@ -84,6 +87,13 @@ final class AppModel {
     // MARK: Démarrage
 
     func bootstrap() async {
+        let prerequis = Prerequis.shared
+        await prerequis.verifierLocal()
+        let dejaConfigure = UserDefaults.standard.bool(forKey: Prerequis.cleTermine)
+        if !dejaConfigure || prerequis.mails != .ok || prerequis.codex != .ok || prerequis.pilotageRefuse {
+            phase = .configuration
+            return
+        }
         await chargerOntologie()
         if ontologie.isEmpty {
             demarrerDecouverte()
@@ -92,6 +102,17 @@ final class AppModel {
         }
         await refreshUnread()
         await loadLast()
+    }
+
+    func terminerConfiguration() {
+        UserDefaults.standard.set(true, forKey: Prerequis.cleTermine)
+        phase = .demarrage
+        Task { await bootstrap() }
+    }
+
+    func ouvrirConfiguration() {
+        guard !busy else { return }
+        phase = .configuration
     }
 
     func chargerOntologie() async {
@@ -201,7 +222,7 @@ final class AppModel {
                     await self.handleDecouverte(event)
                 }
             } catch {
-                self.fail(error.localizedDescription, code: "moteur")
+                self.failEngine(error)
             }
             self.process = nil
         }
@@ -360,7 +381,6 @@ final class AppModel {
         visible = []
         activeColumn = nil
         runId = nil
-        selected = nil
         repris = 0
         var args = ["traiter", "--portee", porteeBoite ? "boite" : "non_lus"]
         if !ranger { args.append("--sans-rangement") }
@@ -371,7 +391,7 @@ final class AppModel {
                     await self.handle(event)
                 }
             } catch {
-                self.fail(error.localizedDescription, code: "moteur")
+                self.failEngine(error)
             }
             self.process = nil
             await self.refreshUnread()
@@ -398,10 +418,20 @@ final class AppModel {
         phase = .termine
     }
 
-    func fail(_ message: String, code: String) {
+    func fail(_ message: String, code: String, url: URL? = nil) {
         errorMessage = message
         errorCode = code
+        errorURL = url
         phase = .erreur
+    }
+
+    /// Erreur du moteur ou de LibreAgent Connect, avec le lien où la corriger quand il existe.
+    func failEngine(_ error: Error) {
+        if case let .libreagent(message, url)? = error as? EngineError {
+            fail(message, code: "libreagent", url: url)
+        } else {
+            fail(error.localizedDescription, code: "moteur")
+        }
     }
 
     func reessayer() {
@@ -505,42 +535,27 @@ final class AppModel {
         }
     }
 
-    // MARK: Validation des réponses
+    // MARK: Ouverture dans la messagerie
 
-    func open(_ card: MailCard) {
-        sheetError = nil
-        withAnimation(.easeOut(duration: 0.2)) { selected = card }
+    /// Un mail « À répondre » s'ouvre dans la fenêtre de rédaction de la messagerie, pré-remplie avec la réponse
+    /// préparée ; tous les autres s'ouvrent tels quels dans la messagerie.
+    func ouvrirCarte(_ card: MailCard) {
+        if repondDansMessagerie(card) { repondreDansMail(card) } else { ouvrirDansMail(card.messageId) }
     }
 
-    func close() {
-        guard !sending else { return }
-        withAnimation(.easeIn(duration: 0.15)) { selected = nil }
+    func aideOuverture(_ card: MailCard) -> String {
+        repondDansMessagerie(card)
+            ? "Ouvrir la réponse préparée dans \(messagerie.nom)"
+            : "Ouvrir dans \(messagerie.nom)"
     }
 
-    func send(_ card: MailCard, body: String) {
-        guard let runId, !sending else { return }
-        sending = true
-        sheetError = nil
-        Task {
-            do {
-                try await Engine.run(["envoyer", "--run", runId, "--mail", card.id], input: body) { event in
-                    if event.event == "envoye" {
-                        self.markSent(card.id, body: body)
-                    } else if event.event == "erreur" {
-                        self.sheetError = event.message
-                    }
-                }
-            } catch {
-                sheetError = error.localizedDescription
-            }
-            sending = false
-        }
+    private func repondDansMessagerie(_ card: MailCard) -> Bool {
+        card.action == "repondre" && !card.reponse.isEmpty && card.statut != "envoye"
     }
 
     func transfer(_ card: MailCard) {
         guard let runId, !sending else { return }
         sending = true
-        sheetError = nil
         Task {
             do {
                 try await Engine.run(["transferer", "--run", runId, "--mail", card.id]) { event in
@@ -548,30 +563,16 @@ final class AppModel {
                         if let index = self.cards.firstIndex(where: { $0.id == card.id }) {
                             self.cards[index].statut = "transfere"
                         }
-                        self.selected = nil
                         self.show(Toast(titre: "Transféré à \(card.transfertEmail)", detail: "Parti à \(Format.maintenant())"))
                     } else if event.event == "erreur" {
-                        self.sheetError = event.message
+                        self.show(Toast(titre: "Transfert impossible", detail: event.message ?? "Erreur inconnue."))
                     }
                 }
             } catch {
-                sheetError = error.localizedDescription
+                show(Toast(titre: "Transfert impossible", detail: error.localizedDescription))
             }
             sending = false
         }
-    }
-
-    private func markSent(_ id: String, body: String) {
-        guard let index = cards.firstIndex(where: { $0.id == id }) else { return }
-        cards[index].statut = "envoye"
-        cards[index].reponse = body
-        let name = Format.nom(cards[index].de)
-        withAnimation(.easeIn(duration: 0.15)) { selected = nil }
-        let left = pendingReplies
-        show(Toast(
-            titre: "Envoyée à \(name)",
-            detail: "Réponse partie à \(Format.maintenant()) · " + (left == 0 ? "plus rien à valider" : Format.pluriel(left, "restante à valider", "restantes à valider"))
-        ))
     }
 
     private func show(_ toast: Toast) {
@@ -606,6 +607,46 @@ final class AppModel {
 
     func ouvrirDiagnosticMail() {
         NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Mail.app"))
+    }
+
+    /// Affiche la fenêtre macOS de déverrouillage du trousseau de session, puis relance le traitement.
+    /// Mail lit le mot de passe du compte dans ce trousseau : verrouillé, il ne peut plus se connecter au serveur.
+    func deverrouillerTrousseau() {
+        Task {
+            let status = await Task.detached { SecKeychainUnlock(nil, 0, nil, false) }.value
+            switch status {
+            case errSecSuccess:
+                reessayer()
+            case errSecUserCanceled:
+                break
+            default:
+                let raison = SecCopyErrorMessageString(status, nil) as String? ?? "code \(status)"
+                fail("Le trousseau de session n'a pas pu être déverrouillé (\(raison)). Ouvre l'app Trousseaux "
+                     + "d'accès, sélectionne le trousseau « session » et déverrouille-le avec le mot de passe de ta "
+                     + "session Mac, puis relance le traitement.", code: "trousseau_verrouille")
+            }
+        }
+    }
+
+    /// Ouvre la réponse préparée dans la fenêtre de rédaction de la messagerie. Rien n'est envoyé.
+    private func messagerieIndisponible() {
+        show(Toast(titre: "Impossible d'ouvrir \(messagerie.nom)", detail: messagerie.raisonIndisponible))
+    }
+
+    func repondreDansMail(_ card: MailCard) {
+        guard let runId else { return }
+        guard messagerie.disponible else { return messagerieIndisponible() }
+        Task {
+            var erreur: String?
+            do {
+                try await Engine.run(["ouvrir-reponse", "--run", runId, "--mail", card.id]) { event in
+                    if event.event == "erreur" { erreur = event.message }
+                }
+            } catch {
+                erreur = error.localizedDescription
+            }
+            if let erreur { show(Toast(titre: "Impossible d'ouvrir la réponse", detail: erreur)) }
+        }
     }
 
     // MARK: Suppression
@@ -758,6 +799,7 @@ final class AppModel {
 
     /// Ouvre le mail dans Apple Mail grâce à son Message-ID (lien message://).
     func ouvrirDansMail(_ messageId: String?) {
+        guard messagerie.disponible else { return messagerieIndisponible() }
         let brut = (messageId ?? "").trimmingCharacters(in: CharacterSet(charactersIn: "<> \n"))
         var autorises = CharacterSet.urlPathAllowed
         autorises.remove(charactersIn: "+=/?&#%")

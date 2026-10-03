@@ -128,10 +128,27 @@ struct EngineEvent: Decodable {
     let nonLus: Int?
     let dejaTraites: Int?
     let deja: Bool?
+    let repris: Int?
+    let ignores: Int?
     let id: String?
     let le: String?
     let statut: String?
     let chemin: String?
+    let accesMail: DiagnosticMail?
+    let codex: DiagnosticCodex?
+    let presente: Bool?
+}
+
+struct DiagnosticMail: Decodable {
+    let lisible: Bool
+    let comptes: Bool
+}
+
+struct DiagnosticCodex: Decodable {
+    let installe: Bool
+    let connecte: Bool
+    let chemin: String?
+    let detail: String?
 }
 
 struct Toast: Identifiable, Equatable {

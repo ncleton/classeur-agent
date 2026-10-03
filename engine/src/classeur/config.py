@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import os
 import shutil
-import subprocess
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
@@ -14,8 +13,6 @@ APP_DIR = Path(os.environ.get(
 ))
 CONFIG_PATH = APP_DIR / "config.toml"
 RUNS_DIR = APP_DIR / "runs"
-SECRETS_DIR = APP_DIR / "secrets"
-KEYCHAIN_SERVICE = "com.nicolascleton.classeur"
 
 DEFAULT_CONFIG = """# Configuration de Classeur.
 # Les classeurs (colonnes) se règlent dans l'application.
@@ -30,7 +27,7 @@ contexte = ""
 ton = "Reprendre le tutoiement ou le vouvoiement de l'expéditeur. Phrases courtes, chaleureuses, sans formule creuse."
 
 [classement]
-# "jev" : modèle de décision TypeSafe (clé TypeSafe requise).
+# "jev" : modèle de décision TypeSafe, avec la clé Jev enregistrée dans LibreAgent.
 # "codex" : Codex choisit le classeur en même temps qu'il rédige.
 moteur = "jev"
 appels_en_parallele = 6
@@ -133,25 +130,14 @@ def load() -> Config:
 
 
 def typesafe_key() -> str:
-    """Clé TypeSafe pour Jev : variable d'environnement, trousseau, puis fichier privé (0600)."""
+    """Clé Jev transmise par LibreAgent Connect (`secrets exec`) au lancement du moteur."""
     env = os.environ.get("TYPESAFE_API_KEY", "").strip()
     if env:
         return env
-    found = subprocess.run(
-        ["/usr/bin/security", "find-generic-password", "-s", KEYCHAIN_SERVICE, "-a", "typesafe", "-w"],
-        capture_output=True, text=True,
-    )
-    if found.returncode == 0 and found.stdout.strip():
-        return found.stdout.strip()
-    secret = SECRETS_DIR / "typesafe"
-    if secret.exists():
-        value = secret.read_text(encoding="utf-8").strip()
-        if value:
-            return value
     raise ConfigError(
-        "Clé TypeSafe absente : Jev ne peut pas classer tes mails. Enregistre ta clé dans le trousseau "
-        f"(service {KEYCHAIN_SERVICE}, compte typesafe) ou dans {secret} avec les droits 600, "
-        "ou choisis [classement] moteur = \"codex\".",
+        "Clé Jev absente : Classeur la reçoit de LibreAgent au lancement du classement. Lance le classement "
+        "depuis l'application Classeur sur un Mac associé à LibreAgent, et enregistre ta clé Jev dans "
+        "LibreAgent (agent Classeur, page Clés).",
         code="cle_typesafe",
     )
 

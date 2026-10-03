@@ -10,9 +10,6 @@ struct RootView: View {
                 BarreHaute()
                 contenu.frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            if let card = model.selected {
-                FicheMail(card: card).id(card.id).transition(.opacity).zIndex(2)
-            }
             if let c = model.reglage {
                 ReglagesClasseur(classeur: c, nouveau: model.reglageNouveau)
                     .id(c.id + (model.reglageNouveau ? "-nouveau" : ""))
@@ -31,6 +28,7 @@ struct RootView: View {
     @ViewBuilder private var contenu: some View {
         switch model.phase {
         case .demarrage: Demarrage()
+        case .configuration: EcranConfiguration()
         case .accueil: Accueil()
         case .decouverte: Decouverte()
         case .connexion, .lecture, .compris: Lecture()
@@ -82,6 +80,7 @@ struct BarreHaute: View {
     private var etat: String {
         switch model.phase {
         case .demarrage: "Ouverture…"
+        case .configuration: "Configuration"
         case .accueil: "Prêt"
         case .decouverte: model.etape == .edition ? "Tes classeurs" : "En cours…"
         case .connexion, .lecture, .compris, .rangement: "En cours…"
@@ -193,8 +192,16 @@ struct Erreur: View {
                     Button("Ouvrir Accès complet au disque") { model.openPrivacy("Privacy_AllFiles") }
                         .buttonStyle(BoutonSecondaire())
                 }
-                if model.errorCode == "compte_deconnecte" {
+                if model.errorCode == "trousseau_verrouille" {
+                    Button("Déverrouiller le trousseau") { model.deverrouillerTrousseau() }
+                        .buttonStyle(BoutonSecondaire())
+                }
+                if model.errorCode == "mail_refus" {
                     Button("Ouvrir Mail") { model.ouvrirDiagnosticMail() }
+                        .buttonStyle(BoutonSecondaire())
+                }
+                if model.errorCode == "libreagent", let lien = model.errorURL {
+                    Button("Ouvrir LibreAgent") { NSWorkspace.shared.open(lien) }
                         .buttonStyle(BoutonSecondaire())
                 }
                 if model.errorMessage.contains("Automatisation") {

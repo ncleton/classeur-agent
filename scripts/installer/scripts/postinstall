@@ -1,0 +1,27 @@
+#!/bin/zsh
+# Installe le moteur de Classeur dans la session de la personne connectée.
+# Installer exécute ce script en root : le moteur est installé avec l'identité de cette personne.
+set -euo pipefail
+
+SRC="/Library/Application Support/Classeur/installation"
+USER_NAME="$(stat -f %Su /dev/console)"
+if [[ -z "$USER_NAME" || "$USER_NAME" == "root" || "$USER_NAME" == "loginwindow" ]]; then
+  echo "Classeur : aucune session ouverte à l'écran. Ouvre ta session puis relance l'installateur." >&2
+  exit 1
+fi
+USER_HOME="$(dscl . -read "/Users/$USER_NAME" NFSHomeDirectory | awk '{print $2}')"
+
+case "$(uname -m)" in
+  arm64) UV="$SRC/uv-arm64" ;;
+  x86_64) UV="$SRC/uv-x86_64" ;;
+  *) echo "Classeur : processeur $(uname -m) non pris en charge." >&2; exit 1 ;;
+esac
+
+LOG_DIR="$USER_HOME/Library/Logs/Classeur"
+sudo -u "$USER_NAME" -H mkdir -p "$LOG_DIR"
+if ! sudo -u "$USER_NAME" -H "$SRC/install-engine.sh" "$UV" "$SRC" \
+    "$USER_HOME/Library/Application Support/Classeur/moteur" 2>&1 \
+    | sudo -u "$USER_NAME" -H tee "$LOG_DIR/installation.log"; then
+  echo "Classeur : l'installation du moteur a échoué. Détail : $LOG_DIR/installation.log" >&2
+  exit 1
+fi

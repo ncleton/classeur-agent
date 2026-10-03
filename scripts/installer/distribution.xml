@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<installer-gui-script minSpecVersion="2">
+    <title>Classeur</title>
+    <welcome file="welcome.html" mime-type="text/html"/>
+    <conclusion file="conclusion.html" mime-type="text/html"/>
+    <options customize="never" require-scripts="true" hostArchitectures="arm64,x86_64"/>
+    <volume-check>
+        <allowed-os-versions>
+            <os-version min="14.0"/>
+        </allowed-os-versions>
+    </volume-check>
+    <domains enable_localSystem="true"/>
+    <choices-outline>
+        <line choice="classeur"/>
+    </choices-outline>
+    <choice id="classeur" visible="false">
+        <pkg-ref id="com.nicolascleton.classeur.pkg"/>
+    </choice>
+    <pkg-ref id="com.nicolascleton.classeur.pkg" version="__VERSION__" onConclusion="none">classeur.pkg</pkg-ref>
+</installer-gui-script>

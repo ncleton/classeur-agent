@@ -1,4 +1,5 @@
-// Génère app/Resources/Classeur.icns : l'orbe Classeur sur fond indigo.
+// Génère app/Resources/Classeur.icns et plugins/classeur/assets/icon.png :
+// une enveloppe blanche, dans l'esprit d'Apple Mail, sur le fond indigo de Classeur.
 // Usage : swift app/Tools/make_icon.swift
 import AppKit
 
@@ -37,24 +38,70 @@ func render(_ size: Int) -> Data {
     }
     let center = CGPoint(x: s * 0.5, y: s * 0.5)
     let glow = CGGradient(colorsSpace: space, colors: [
-        CGColor(red: 0.72, green: 0.64, blue: 1, alpha: 0.7),
+        CGColor(red: 0.62, green: 0.54, blue: 1, alpha: 0.45),
         CGColor(red: 0.45, green: 0.3, blue: 1, alpha: 0),
     ] as CFArray, locations: [0, 1])!
-    ctx.drawRadialGradient(glow, startCenter: center, startRadius: s * 0.18, endCenter: center, endRadius: s * 0.42, options: [])
-    let orb = CGGradient(colorsSpace: space, colors: [
-        CGColor(red: 1, green: 1, blue: 1, alpha: 1),
-        CGColor(red: 0.88, green: 0.84, blue: 1, alpha: 1),
-        CGColor(red: 0.61, green: 0.51, blue: 1, alpha: 1),
-        CGColor(red: 0.36, green: 0.24, blue: 0.94, alpha: 1),
-    ] as CFArray, locations: [0, 0.3, 0.7, 1])!
-    ctx.saveGState()
-    ctx.addEllipse(in: CGRect(x: center.x - s * 0.22, y: center.y - s * 0.22, width: s * 0.44, height: s * 0.44))
-    ctx.clip()
-    ctx.drawRadialGradient(orb, startCenter: CGPoint(x: center.x - s * 0.07, y: center.y + s * 0.08), startRadius: 0,
-                           endCenter: center, endRadius: s * 0.24, options: [.drawsAfterEndLocation])
-    ctx.restoreGState()
+    ctx.drawRadialGradient(glow, startCenter: center, startRadius: s * 0.1, endCenter: center, endRadius: s * 0.44, options: [])
+    drawEnvelope(ctx, s)
     NSGraphicsContext.restoreGraphicsState()
     return rep.representation(using: .png, properties: [:])!
+}
+
+// Enveloppe blanche à rabat, coins arrondis et plis gris clair, posée avec une ombre douce.
+func drawEnvelope(_ ctx: CGContext, _ s: CGFloat) {
+    let space = CGColorSpaceCreateDeviceRGB()
+    let body = CGRect(x: s * 0.215, y: s * 0.305, width: s * 0.57, height: s * 0.39)
+    let radius = s * 0.04
+    let bodyPath = CGPath(roundedRect: body, cornerWidth: radius, cornerHeight: radius, transform: nil)
+
+    ctx.saveGState()
+    ctx.setShadow(offset: CGSize(width: 0, height: -s * 0.018), blur: s * 0.045,
+                  color: CGColor(red: 0.03, green: 0.01, blue: 0.2, alpha: 0.55))
+    ctx.addPath(bodyPath)
+    ctx.setFillColor(CGColor(red: 1, green: 1, blue: 1, alpha: 1))
+    ctx.fillPath()
+    ctx.restoreGState()
+
+    ctx.saveGState()
+    ctx.addPath(bodyPath)
+    ctx.clip()
+    let paper = CGGradient(colorsSpace: space, colors: [
+        CGColor(red: 1, green: 1, blue: 1, alpha: 1),
+        CGColor(red: 0.9, green: 0.91, blue: 0.94, alpha: 1),
+    ] as CFArray, locations: [0, 1])!
+    ctx.drawLinearGradient(paper, start: CGPoint(x: 0, y: body.maxY), end: CGPoint(x: 0, y: body.minY), options: [])
+
+    let fold = CGColor(red: 0.74, green: 0.76, blue: 0.82, alpha: 1)
+    let line = max(1, s * 0.009)
+    ctx.setStrokeColor(fold)
+    ctx.setLineWidth(line)
+    ctx.setLineCap(.round)
+    let apex = CGPoint(x: body.midX, y: body.minY + body.height * 0.4)
+    ctx.move(to: CGPoint(x: body.minX, y: body.minY))
+    ctx.addLine(to: CGPoint(x: body.midX - body.width * 0.12, y: apex.y + body.height * 0.06))
+    ctx.move(to: CGPoint(x: body.maxX, y: body.minY))
+    ctx.addLine(to: CGPoint(x: body.midX + body.width * 0.12, y: apex.y + body.height * 0.06))
+    ctx.strokePath()
+
+    let flap = CGMutablePath()
+    flap.move(to: CGPoint(x: body.minX - line, y: body.maxY + line))
+    flap.addLine(to: CGPoint(x: apex.x - body.width * 0.05, y: apex.y + body.height * 0.035))
+    flap.addQuadCurve(to: CGPoint(x: apex.x + body.width * 0.05, y: apex.y + body.height * 0.035), control: apex)
+    flap.addLine(to: CGPoint(x: body.maxX + line, y: body.maxY + line))
+    flap.closeSubpath()
+    ctx.saveGState()
+    ctx.setShadow(offset: CGSize(width: 0, height: -s * 0.006), blur: s * 0.018,
+                  color: CGColor(red: 0.1, green: 0.1, blue: 0.3, alpha: 0.28))
+    ctx.addPath(flap)
+    ctx.setFillColor(CGColor(red: 0.99, green: 0.99, blue: 1, alpha: 1))
+    ctx.fillPath()
+    ctx.restoreGState()
+    ctx.addPath(flap)
+    ctx.setStrokeColor(fold)
+    ctx.setLineWidth(line)
+    ctx.setLineJoin(.round)
+    ctx.strokePath()
+    ctx.restoreGState()
 }
 
 for base in [16, 32, 128, 256, 512] {
@@ -68,4 +115,11 @@ task.executableURL = URL(fileURLWithPath: "/usr/bin/iconutil")
 task.arguments = ["-c", "icns", iconset.path, "-o", out.path]
 try task.run()
 task.waitUntilExit()
-print(task.terminationStatus == 0 ? "Icône écrite : \(out.path)" : "iconutil a échoué")
+guard task.terminationStatus == 0 else {
+    FileHandle.standardError.write("iconutil a échoué (code \(task.terminationStatus)) : vérifiez \(iconset.path)\n".data(using: .utf8)!)
+    exit(1)
+}
+print("Icône écrite : \(out.path)")
+let pluginIcon = root.deletingLastPathComponent().appendingPathComponent("plugins/classeur/assets/icon.png")
+try render(512).write(to: pluginIcon)
+print("Icône du plugin écrite : \(pluginIcon.path)")

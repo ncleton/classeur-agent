@@ -15,6 +15,8 @@ from pathlib import Path
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
+from .maildiag import refus_mail
+
 INBOX_NAMES = {"inbox", "boîte de réception", "boite de reception"}
 
 
@@ -83,12 +85,8 @@ class MailStore:
                     code="acces_disque",
                 )
             if "-10000" in str(message) and tool in {"mailbox_create", "triage_apply"}:
-                raise MailStoreError(
-                    "Apple Mail refuse de créer ou de remplir les dossiers : ton compte est probablement déconnecté. "
-                    "Dans Mail, ouvre Fenêtre > Diagnostic de connexion. Si iCloud (ou un autre compte) est en rouge, "
-                    "reconnecte-le dans Réglages Système, puis relance le traitement.",
-                    code="compte_deconnecte",
-                )
+                explication, code_refus = refus_mail(str(message))
+                raise MailStoreError(explication, code=code_refus)
             raise MailStoreError(f"{tool} : {message}", code=code)
         return data
 

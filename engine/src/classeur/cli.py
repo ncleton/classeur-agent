@@ -7,7 +7,7 @@ import json
 import sys
 
 from . import config as cfg
-from . import ontology, runner
+from . import diagnostic, ontology, runner
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -42,15 +42,25 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("supprimer", help="Placer un mail dans la corbeille d'Apple Mail.")
     p.add_argument("--mail", required=True)
     p.add_argument("--run")
+    p = sub.add_parser("ouvrir-reponse", help="Ouvrir la réponse préparée dans la fenêtre de rédaction de Mail.")
+    p.add_argument("--run", required=True)
+    p.add_argument("--mail", required=True)
 
     sub.add_parser("dernier", help="Afficher le dernier traitement.")
     sub.add_parser("compter", help="Compter les mails des boîtes de réception.")
     sub.add_parser("config", help="Créer la configuration si besoin et afficher son chemin.")
+    sub.add_parser("diagnostic", help="Vérifier l'accès aux mails et la connexion de Codex.")
+    sub.add_parser("verifier-cle", help="Vérifier que la clé Jev a été transmise par LibreAgent.")
 
     args = parser.parse_args(argv)
     try:
         if args.cmd == "config":
             runner.emit("config", chemin=str(cfg.ensure_config()))
+        elif args.cmd == "diagnostic":
+            runner.emit("diagnostic", **diagnostic.etat())
+        elif args.cmd == "verifier-cle":
+            cfg.typesafe_key()
+            runner.emit("cle", presente=True)
         elif args.cmd == "dernier":
             runner.emit("dernier", run=runner.latest_run())
         elif args.cmd == "ontologie":
@@ -59,6 +69,9 @@ def main(argv: list[str] | None = None) -> int:
             runner.emit("ontologie", **asyncio.run(runner.etat_ontologie()))
         elif args.cmd == "corriger":
             runner.emit("corrige", id=args.mail, **runner.corriger(args.mail, args.classeur))
+        elif args.cmd == "ouvrir-reponse":
+            item = runner.ouvrir_reponse(args.run, args.mail)
+            runner.emit("reponse_ouverte", id=item["id"])
         else:
             conf = cfg.load()
             if args.cmd == "compter":

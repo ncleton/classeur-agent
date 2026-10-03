@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import subprocess
 
+from .maildiag import refus_mail
+
 SCRIPT = r'''
 on findMessage(acctId, boxNames, mid)
 	tell application "Mail"
@@ -51,6 +53,12 @@ on run argv
 		else if action is "delete" then
 			delete theMsg
 			return "deleted"
+		else if action is "compose" then
+			set outgoing to reply theMsg with opening window
+			delay 0.4
+			set content of outgoing to bodyText
+			activate
+			return "composed"
 		else
 			error "Action inconnue : " & action number 1002
 		end if
@@ -89,10 +97,7 @@ def _run(args: list[str], timeout: int = 90) -> str:
                 "Confidentialité et sécurité > Automatisation > Classeur > Mail."
             )
         if "-10000" in detail:
-            raise MailAppError(
-                "Apple Mail refuse l'opération : ton compte est probablement déconnecté. Dans Mail, ouvre "
-                "Fenêtre > Diagnostic de connexion et reconnecte le compte en rouge dans Réglages Système."
-            )
+            raise MailAppError(refus_mail(detail)[0])
         if "(1001)" in detail:
             raise MailAppError(
                 "Ce mail n'est plus dans ta boîte de réception ni dans tes dossiers Classeur : il a sans doute "
@@ -128,3 +133,8 @@ def move(*, account: str, mailboxes: list[str], message_id: str, target: str) ->
 def delete(*, account: str, mailboxes: list[str], message_id: str) -> None:
     """Place le mail dans la corbeille d'Apple Mail (il reste récupérable)."""
     _run(["delete", account, "\n".join(mailboxes), message_id.strip("<>"), "", ""])
+
+
+def compose_reply(*, account: str, mailboxes: list[str], message_id: str, body: str, original: dict) -> None:
+    """Ouvre la fenêtre de réponse d'Apple Mail, pré-remplie avec la réponse préparée. Rien n'est envoyé."""
+    _run(["compose", account, "\n".join(mailboxes), message_id.strip("<>"), body + _quote(original), ""])
