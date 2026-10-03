@@ -207,7 +207,7 @@ struct EcranConfiguration: View {
             Rectangle().fill(Theme.trait).frame(width: 1)
             detail.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
-        .frame(width: 900, height: 560)
+        .frame(width: 1000, height: 600)
         .panneau(24)
         .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(Color.black.opacity(0.18)))
         .task {
@@ -379,6 +379,21 @@ struct EcranConfiguration: View {
     private var etapeCle: some View {
         VStack(alignment: .leading, spacing: 18) {
             entete("Clé Jev", "Jev classe vos mails. Sa clé est enregistrée dans LibreAgent quand vous ajoutez l'agent Classeur, puis transmise à Classeur à chaque classement, sans jamais être écrite sur ce Mac.", ok: prerequis.cle == .ok)
+            if prerequis.cle != .ok {
+                VStack(alignment: .leading, spacing: 7) {
+                    Text("Obtenir votre clé").font(.system(size: 13, weight: .bold))
+                    Text("1. Ouvrez console.typesafe.ai et créez votre compte TypeSafe, ou connectez-vous.")
+                    Text("2. Dans la console, créez une nouvelle clé API, par exemple nommée « Classeur ».")
+                    Text("3. Copiez-la tout de suite : la console peut ne l'afficher qu'une fois.")
+                    Text("4. Cliquez sur « Enregistrer ma clé dans LibreAgent », collez-la et choisissez de la garder pour vous ou de la partager.")
+                }
+                .font(.system(size: 13))
+                .foregroundStyle(Theme.texte2)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .panneau(14)
+            }
             if prerequis.toutEstPret {
                 HStack(spacing: 14) {
                     Image(systemName: "checkmark.seal.fill").font(.system(size: 30)).foregroundStyle(Color(hex: 0x6BF2A8))
@@ -390,12 +405,14 @@ struct EcranConfiguration: View {
             } else if prerequis.cle != .ok {
                 message(prerequis.cle)
                 HStack(spacing: 12) {
+                    Button("Ouvrir console.typesafe.ai") { NSWorkspace.shared.open(URL(string: "https://console.typesafe.ai")!) }
+                        .buttonStyle(BoutonSecondaire()).fixedSize()
                     if let lien = prerequis.cleLien {
                         Button("Enregistrer ma clé dans LibreAgent") { NSWorkspace.shared.open(lien) }
-                            .buttonStyle(BoutonPrincipal()).frame(width: 320)
+                            .buttonStyle(BoutonPrincipal()).fixedSize()
                     }
-                    Button("Vérifier à nouveau") { Task { await prerequis.verifierCle() } }
-                        .buttonStyle(BoutonSecondaire())
+                    Button("Vérifier") { Task { await prerequis.verifierCle() } }
+                        .buttonStyle(BoutonSecondaire()).fixedSize()
                         .disabled(prerequis.cle == .verification)
                 }
             }

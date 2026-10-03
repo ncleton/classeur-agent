@@ -1,6 +1,6 @@
 {
   "name": "classeur",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Lit les mails d'Apple Mail, les range dans des classeurs et prépare les réponses à valider, sur le Mac de la personne.",
   "author": {
     "name": "Nicolas Cléton"
