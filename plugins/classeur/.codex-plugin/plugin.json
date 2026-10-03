@@ -1,0 +1,36 @@
+{
+  "name": "classeur",
+  "version": "0.1.0",
+  "description": "Lit les mails d'Apple Mail, les range dans des classeurs et prépare les réponses à valider, sur le Mac de la personne.",
+  "author": {
+    "name": "Nicolas Cléton"
+  },
+  "repository": "https://github.com/ncleton/classeur-agent",
+  "keywords": [
+    "apple-mail",
+    "mail",
+    "tri",
+    "reponses",
+    "macos"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Classeur",
+    "shortDescription": "Tri et réponses Apple Mail sur votre Mac",
+    "longDescription": "Classeur lit vos mails dans Apple Mail, comprend ce que chacun demande, les range dans des classeurs et prépare les réponses. Rien ne part sans votre validation. Fonctionne uniquement sur un Mac où Apple Mail est configuré.",
+    "developerName": "Nicolas Cléton",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Installe Classeur sur ce Mac.",
+      "Trie ma boîte de réception sans rien déplacer.",
+      "Montre-moi les réponses préparées au dernier traitement."
+    ],
+    "brandColor": "#3B2FD9",
+    "composerIcon": "./assets/icon.png",
+    "logo": "./assets/icon.png"
+  }
+}

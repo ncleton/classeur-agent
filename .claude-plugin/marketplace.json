@@ -1,0 +1,16 @@
+{
+  "name": "classeur",
+  "owner": {
+    "name": "Nicolas Cléton"
+  },
+  "plugins": [
+    {
+      "name": "classeur",
+      "source": "./plugins/classeur",
+      "description": "Lit les mails d'Apple Mail, les range dans des classeurs et prépare les réponses à valider, sur le Mac de la personne."
+    }
+  ],
+  "metadata": {
+    "description": "Catalogue du plugin Classeur pour Claude Code."
+  }
+}

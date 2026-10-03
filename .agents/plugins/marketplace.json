@@ -1,0 +1,20 @@
+{
+  "name": "classeur",
+  "interface": {
+    "displayName": "Classeur"
+  },
+  "plugins": [
+    {
+      "name": "classeur",
+      "source": {
+        "source": "local",
+        "path": "./plugins/classeur"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

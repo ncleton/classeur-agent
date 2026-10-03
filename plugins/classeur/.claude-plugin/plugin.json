@@ -1,0 +1,16 @@
+{
+  "name": "classeur",
+  "version": "0.1.0",
+  "description": "Lit les mails d'Apple Mail, les range dans des classeurs et prépare les réponses à valider, sur le Mac de la personne.",
+  "author": {
+    "name": "Nicolas Cléton"
+  },
+  "repository": "https://github.com/ncleton/classeur-agent",
+  "keywords": [
+    "apple-mail",
+    "mail",
+    "tri",
+    "reponses",
+    "macos"
+  ]
+}
